@@ -13,5 +13,18 @@
 - conda activate RAG.env  激活”RAG.env”环境
 - conda deactivate  关闭当前环境
 - conda env list  查看conda管理的虚拟环境(包括名称及其路径)
-- 并简单介绍了”客户端—服务端”模型,同时安装了Django框架
+- 并简单介绍了”客户端—服务端”模型,同时安装了Django服务器框架
+
+### 2026.10.16-17
+#### 课程主要内容:
+##### Django项目目录结构梳理:
+- asgi.py和wsgi.py：上线时使用的网络代理文件，开发阶段无需关注。
+- urls.py：核心路由配置文件，负责前端访问路径映射。
+- settings.py：项目全局配置文件。
+- manage.py：Django管理脚本，用于执行启动服务器等命令（如runserver）。
+##### 代码实践:
+- 用 ChatOpenAI 实例化模型，配置 model、api_key、base_url、temperature；
+- 用单例加线程锁把调用封装成 llm.py；
+- 用 pydantic 定义邮件参数，smtplib 连 QQ 邮箱 SSL 发信，以 @tool 注册为工具，再在 views.py 接入记忆组件。
+
 
