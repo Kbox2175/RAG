@@ -1,7 +1,7 @@
 import smtplib
 from email.mime.text import MIMEText
 
-from langchain_core import tools
+from langchain_core.tools import tool  # 必须导入 tool 才能使用 @tool 装饰器
 from pydantic import BaseModel, Field
 
 
@@ -34,3 +34,35 @@ def send_email(to: str, subject: str, content: str):
 
     except Exception as e:
         return f"邮件发送失败,失败原因{e}"
+
+
+"""
+数据库查询工具
+"""
+
+import MySQLdb
+class SQLSchema(BaseModel):
+    sql:str = Field(...,description="数据库查询语句")
+
+@tool("sql_query",args_schema=SQLSchema)
+def sql_query(sql:str):
+    """
+    执行SQL查询语句
+    """
+    try:
+        con = MySQLdb.connect( #数据库链接对象,配置数据库参数
+            host = "localhost", # 链接本地地址
+            port = 3306, # 数据库端口号
+            user = "root", # 数据库用户
+            password = "123456", # 数据库密码
+            database = "rag", # 连接的数据库
+            charset = "utf8mb4", # 编码方案,utf8mb4允许输出某些emoji
+        )
+        cursor = con.cursor() #创建游标连接数据库
+        cursor.execute(sql) #执行SQL语句
+        result = cursor.fetchall() #获取执行结果
+        cursor.close() #关闭游标
+        con.close() #关闭连接对象
+        return str(result)
+    except Exception as e :
+        return f"数据库查询失败,失败原因{e}"
