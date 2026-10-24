@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+# BASE_DTR:项目根目录(),Path.resolve():表示当前文件路径
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -54,7 +55,7 @@ ROOT_URLCONF = 'RAGDjango.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -102,9 +103,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'zh-hans'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
@@ -116,12 +117,13 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
-
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
+# 注意: Django 没有 MAILERS 这个配置项(写了也不会生效,只会让人误以为邮件被配置过)。
+# 本项目真正发邮件的是 tools.send_email(smtplib 直连),这里是给 django.core.mail 用的。
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+
