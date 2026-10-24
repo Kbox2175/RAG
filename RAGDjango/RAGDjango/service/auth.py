@@ -1,4 +1,5 @@
 import secrets
+import time
 
 import redis
 from django.http import JsonResponse  # 将数据以Json格式发送给前端
@@ -10,10 +11,47 @@ from ..llm import ChatModel
 from ..tools.tools import send_email, smtp_send, sql_query
 
 # redis的默认值;decode_responses=True 让 get() 直接返回 str,不用再 .decode()
-redis_conn = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True)
+# socket_connect_timeout:本机没装 Redis 时快速失败,别让一个请求卡好几秒
+redis_conn = redis.Redis(host="localhost", port=6379, db=0, decode_responses=True,
+                         socket_connect_timeout=1)
 
 # 验证码有效期(秒)
 CODE_TTL = 300
+
+# ---------- 验证码存取的统一入口:优先 Redis,本机没起 Redis 时退化成进程内存 ----------
+# 原来直接调 redis_conn.set/get,一旦 Redis 没装就会在"邮件已经发出去"之后抛
+# ConnectionError -> 500,用户收得到信却登不了录。这里只加一层兜底,
+# 键名(login:code:邮箱)和 5 分钟有效期这两个语义完全不变。
+_memory_codes = {}  # {key: (code, 过期时间戳)} — 仅 Redis 不可用时使用
+
+
+def _code_set(key, code):
+    try:
+        redis_conn.set(key, code, ex=CODE_TTL)
+    except redis.RedisError as e:
+        print(f"[cache] Redis 不可用,验证码先存进程内存(重启失效): {e}")
+        _memory_codes[key] = (code, time.time() + CODE_TTL)
+
+
+def _code_get(key):
+    try:
+        return redis_conn.get(key)
+    except redis.RedisError:
+        item = _memory_codes.get(key)
+        if not item:
+            return None
+        code, expires = item
+        if time.time() > expires:  # 内存兜底也要遵守 5 分钟有效期
+            _memory_codes.pop(key, None)
+            return None
+        return code
+
+
+def _code_delete(key):
+    try:
+        redis_conn.delete(key)
+    except redis.RedisError:
+        _memory_codes.pop(key, None)
 
 
 # ============================================================
@@ -76,8 +114,8 @@ def send_email_assistant(email):
             msg = "邮件发送失败,请稍后重试！"
         return JsonResponse({"code": 500, "msg": msg, "data": ""})
 
-    # 邮件发送成功后才写入 redis,有效期 CODE_TTL 秒
-    redis_conn.set(f"login:code:{email}", code, ex=CODE_TTL)
+    # 邮件发送成功后才写入缓存,有效期 CODE_TTL 秒
+    _code_set(f"login:code:{email}", code)
     print(f"[send_code] 验证码已发送 -> {email}")
     # 验证码只发到邮箱,绝对不要回传给浏览器
     return JsonResponse({"code": 200, "msg": "验证码发送成功！", "data": ""})
@@ -91,9 +129,9 @@ def login_code(account, code):
         return JsonResponse({"code": 400, "msg": "邮箱和验证码不能为空！"})
 
     key = f"login:code:{account}"
-    stored = redis_conn.get(key)  # decode_responses=True,直接返回 str 或 None
+    stored = _code_get(key)  # decode_responses=True,直接返回 str 或 None
     if stored and stored == code:
-        redis_conn.delete(key)  # 验证码一次性使用,登录成功立即失效
+        _code_delete(key)  # 验证码一次性使用,登录成功立即失效
         return JsonResponse({"code": 200, "msg": "正在登录!"})
     return JsonResponse({"code": 500, "msg": "验证码过期或错误!"})
 

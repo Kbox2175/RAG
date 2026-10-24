@@ -18,7 +18,7 @@ from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
 
-from .views import index_html, login_code, login_html, send_code, send_email_assistant
+from .views import api_chat, api_rag, email_assistant, index_html, login_code, login_html, send_code, send_email_assistant
 
 # path路由地址,前端访问的URL请求地址,比如www.baidu.com/图片
 # 路由的语法格式:path("请求路径/",views中的将要访问的方法,name="就是这个路由的名称")
@@ -40,5 +40,9 @@ urlpatterns = [
     path("index/", index_html, name="主页页面"),
     path("login_code/", login_code, name="验证码登录功能!"),
     path("hybridaction/<path:rest>", ignore_browser_probe),
-    path("api/email/",send_email_assis,name="流式输出邮件"),
+    path("api/email/", email_assistant, name="流式输出邮件"),
+    # 基础聊天模型
+    # 补上尾斜杠:前端请求的是 /api/chat/,而 POST 不能靠 APPEND_SLASH 自动重定向
+    path("api/chat/", api_chat, name="基础聊天模型"),
+    path("api/rag/", api_rag, name="RAG法律问答"),
 ]

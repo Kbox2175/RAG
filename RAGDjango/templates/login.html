@@ -252,6 +252,13 @@ const app = createApp({
         // 后端业务码统一按数字比较(200 成功 / 400 参数或未注册 / 500 失败)
         const isSuccess = (data) => Number(data && data.code) === 200;
 
+        // Django 的 CSRF token 存在 csrftoken cookie 里（由 {% csrf_token %} 或
+        // @ensure_csrf_cookie 下发），POST 时必须放进 X-CSRFToken 头，否则 403
+        const getCookie = (name) => {
+            const m = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+            return m ? decodeURIComponent(m[1]) : '';
+        };
+
         // axios 遇到非 2xx 会抛异常,这里把后端 msg 取出来提示
         const showApiError = (error, fallback) => {
             const msg = error && error.response && error.response.data && error.response.data.msg;
@@ -319,7 +326,10 @@ const app = createApp({
             try {
                 const response = await axios({
                     url: '/send_code/',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
                     method: 'POST',
                     data: { email: account.email }
                 });
@@ -346,7 +356,10 @@ const app = createApp({
                     try {
                         const response = await axios({
                             url: '/login_code/',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')
+                            },
                             method: 'POST',
                             data: { email: account.email, code: account.code }
                         });
