@@ -205,7 +205,7 @@ def send_email_assistant_by_agent(email):
     verify_code = str(ans.get("data") or "").strip()
 
     if code == 200 and len(verify_code) == 6:
-        redis_conn.set(f"login:code:{email}", verify_code, ex=CODE_TTL)
+        _code_set(f"login:code:{email}", verify_code)
         return JsonResponse({"code": 200, "msg": ans.get("msg") or "验证码发送成功！", "data": ""})
 
     if code in (400, 500):
